@@ -88,6 +88,91 @@ import { AuthService } from '../../../core/services/auth.service';
           </div>
         </div>
       </div>
+
+      <!-- ===================== REVIEWS SECTION ===================== -->
+      <div class="mt-5" *ngIf="product && !loading">
+        <hr>
+        <h3 class="fw-bold mb-4"><i class="bi bi-star-fill text-warning me-2"></i>Avis des lecteurs</h3>
+
+        <!-- Submit Review Form (only if logged in) -->
+        <div class="card mb-4 shadow-sm" *ngIf="isLoggedIn">
+          <div class="card-body">
+            <h5 class="card-title mb-3">Laisser un avis</h5>
+
+            <!-- Star Rating Selector -->
+            <div class="mb-3">
+              <label class="form-label fw-semibold">Note :</label>
+              <div class="d-flex gap-1">
+                <span *ngFor="let star of [1,2,3,4,5]"
+                      (click)="newReview.rating = star"
+                      style="cursor: pointer; font-size: 1.8rem;"
+                      [style.color]="star <= newReview.rating ? '#ffc107' : '#dee2e6'">
+                  &#9733;
+                </span>
+              </div>
+            </div>
+
+            <div class="mb-3">
+              <label class="form-label fw-semibold">Commentaire :</label>
+              <textarea class="form-control" rows="3"
+                        [(ngModel)]="newReview.comment"
+                        placeholder="Partagez votre avis sur ce livre..."></textarea>
+            </div>
+
+            <div class="alert alert-success" *ngIf="reviewSuccess">
+              <i class="bi bi-check-circle me-2"></i>Votre avis a été publié !
+            </div>
+            <div class="alert alert-danger" *ngIf="reviewError">
+              <i class="bi bi-exclamation-circle me-2"></i>{{ reviewError }}
+            </div>
+
+            <button class="btn btn-primary" (click)="submitReview()" [disabled]="submittingReview">
+              <span class="spinner-border spinner-border-sm me-2" *ngIf="submittingReview"></span>
+              <i class="bi bi-send me-2" *ngIf="!submittingReview"></i>
+              Publier mon avis
+            </button>
+          </div>
+        </div>
+
+        <div class="alert alert-info" *ngIf="!isLoggedIn">
+          <i class="bi bi-info-circle me-2"></i>
+          <a routerLink="/auth/login" class="alert-link fw-bold">Connectez-vous</a>
+          pour laisser un avis.
+        </div>
+
+        <!-- Reviews List -->
+        <div class="text-center py-3" *ngIf="loadingReviews">
+          <div class="spinner-border spinner-border-sm text-primary"></div>
+          <span class="ms-2 text-muted">Chargement des avis...</span>
+        </div>
+
+        <div *ngIf="!loadingReviews">
+          <p class="text-muted" *ngIf="reviews.length === 0">
+            <i class="bi bi-chat-dots me-2"></i>Aucun avis pour ce livre. Soyez le premier !
+          </p>
+
+          <div class="card mb-3 shadow-sm" *ngFor="let review of reviews">
+            <div class="card-body">
+              <div class="d-flex justify-content-between align-items-start mb-2">
+                <div>
+                  <strong><i class="bi bi-person-circle me-1"></i>{{ review.username }}</strong>
+                  <div class="mt-1">
+                    <span *ngFor="let star of [1,2,3,4,5]"
+                          style="font-size: 1.2rem;"
+                          [style.color]="star <= review.rating ? '#ffc107' : '#dee2e6'">
+                      &#9733;
+                    </span>
+                  </div>
+                </div>
+                <small class="text-muted">{{ review.createdAt | date:'dd/MM/yyyy' }}</small>
+              </div>
+              <p class="mb-0">{{ review.comment }}</p>
+            </div>
+          </div>
+        </div>
+      </div>
+      <!-- ===================== END REVIEWS ===================== -->
+
     </div>
   `
 })
@@ -99,6 +184,14 @@ export class ProductDetailComponent implements OnInit {
   addedToCart = false;
   successMessage = '';
   errorMessage = '';
+
+  // Reviews
+  reviews: any[] = [];
+  loadingReviews = false;
+  submittingReview = false;
+  reviewSuccess = false;
+  reviewError = '';
+  newReview = { rating: 0, comment: '' };
 
   constructor(
     private route: ActivatedRoute,
@@ -120,6 +213,7 @@ export class ProductDetailComponent implements OnInit {
         next: (product) => {
           this.product = product;
           this.loading = false;
+          this.loadReviews(product.id);
           this.cdr.detectChanges();
         },
         error: (err) => {
@@ -132,6 +226,60 @@ export class ProductDetailComponent implements OnInit {
       this.loading = false;
       this.cdr.detectChanges();
     }
+  }
+
+  loadReviews(productId: number): void {
+    this.loadingReviews = true;
+    this.http.get<any[]>(`http://localhost:8080/api/reviews/product/${productId}`).subscribe({
+      next: (reviews) => {
+        this.reviews = reviews;
+        this.loadingReviews = false;
+        this.cdr.detectChanges();
+      },
+      error: () => {
+        this.loadingReviews = false;
+        this.cdr.detectChanges();
+      }
+    });
+  }
+
+  submitReview(): void {
+    if (this.newReview.rating === 0) {
+      this.reviewError = 'Veuillez sélectionner une note.';
+      return;
+    }
+    if (!this.newReview.comment.trim()) {
+      this.reviewError = 'Veuillez écrire un commentaire.';
+      return;
+    }
+
+    this.submittingReview = true;
+    this.reviewError = '';
+    this.reviewSuccess = false;
+
+    const currentUser = this.authService.currentUser;
+    const payload = {
+      productId: this.product.id,
+      username: currentUser?.email || 'Anonyme',
+      comment: this.newReview.comment,
+      rating: this.newReview.rating
+    };
+
+    this.http.post<any>('http://localhost:8080/api/reviews', payload).subscribe({
+      next: (review) => {
+        this.reviews.unshift(review);
+        this.newReview = { rating: 0, comment: '' };
+        this.submittingReview = false;
+        this.reviewSuccess = true;
+        setTimeout(() => this.reviewSuccess = false, 3000);
+        this.cdr.detectChanges();
+      },
+      error: () => {
+        this.submittingReview = false;
+        this.reviewError = 'Erreur lors de la publication. Réessayez.';
+        this.cdr.detectChanges();
+      }
+    });
   }
 
   decreaseQty(): void {

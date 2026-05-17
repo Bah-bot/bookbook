@@ -80,7 +80,14 @@ export class LoginComponent {
       },
       error: (err: any) => {
         this.loading = false;
-        this.errorMessage = err.error || 'Email ou mot de passe incorrect';
+        const status = err.status;
+        if (status === 404) {
+          this.errorMessage = 'Aucun compte trouvé avec cet email. Veuillez vous inscrire.';
+        } else if (status === 401) {
+          this.errorMessage = 'Mot de passe incorrect. Veuillez réessayer.';
+        } else {
+          this.errorMessage = err.error || 'Email ou mot de passe incorrect.';
+        }
       }
     });
   }

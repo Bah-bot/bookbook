@@ -4,6 +4,7 @@ import { provideRouter, withRouterConfig } from '@angular/router';
 import { provideHttpClient } from '@angular/common/http';
 import { importProvidersFrom } from '@angular/core';
 import { FormsModule } from '@angular/forms';
+import { AdminComponent } from './app/features/admin/admin.component';
 
 export const routes = [
   { path: '', redirectTo: '/catalog', pathMatch: 'full' as const },
@@ -12,6 +13,7 @@ export const routes = [
   { path: 'cart', loadChildren: () => import('./app/features/cart/cart.module').then(m => m.CartModule) },
   { path: 'orders', loadChildren: () => import('./app/features/orders/orders.module').then(m => m.OrdersModule) },
   { path: 'profile', loadChildren: () => import('./app/features/profile/profile.module').then(m => m.ProfileModule) },
+  { path: 'admin', component: AdminComponent },
   { path: '**', redirectTo: '/catalog' }
 ];
 

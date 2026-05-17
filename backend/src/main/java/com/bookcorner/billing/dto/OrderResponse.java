@@ -15,5 +15,6 @@ public class OrderResponse {
     private Double total;
     private String status;
     private Long userId;
+    private String userEmail;
     private List<OrderItemResponse> items;
 }

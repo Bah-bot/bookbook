@@ -76,8 +76,8 @@ export class RegisterComponent {
     this.authService.register(this.registerForm.value).subscribe({
       next: () => {
         this.loading = false;
-        this.successMessage = 'Compte créé ! Redirection...';
-        setTimeout(() => this.router.navigate(['/auth/login']), 1500);
+        this.successMessage = '🎉 Compte créé avec succès ! Vous allez être redirigé vers la page de connexion...';
+        setTimeout(() => this.router.navigate(['/auth/login']), 2500);
       },
       error: (err: any) => {
         this.loading = false;
